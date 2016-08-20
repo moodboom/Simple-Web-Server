@@ -20,8 +20,28 @@ include_directories(.)
 
 find_package(Threads REQUIRED)
 
-find_package(Boost 1.53.0 COMPONENTS regex system thread filesystem date_time REQUIRED)
-include_directories(SYSTEM ${Boost_INCLUDE_DIR})
+
+# -------------------------------
+# MDM Set up relative paths to boost
+# -------------------------------
+set(BoostRoot "../$ENV{boost_version}/")   # NOTE: boost_version is set in .bashrc
+
+# MDM CMake handles boost like this...
+set(Boost_INCLUDE_DIR ${BoostRoot})
+IF(CMAKE_BUILD_TYPE MATCHES DEBUG)
+    message("Building with boost debug libraries...")
+    set(Boost_LIBRARY_DIR ${BoostRoot}lib/debug)
+ELSE()
+    set(Boost_LIBRARY_DIR ${BoostRoot}lib)
+ENDIF()
+find_package(Boost COMPONENTS regex system thread filesystem date_time REQUIRED)
+# MDM Make sure our version comes before any system version of boost
+include_directories(${Boost_INCLUDE_DIR})
+link_directories(${Boost_LIBRARY_DIR})
+
+# MDM orig sws boost stuff, not gonna work here
+# find_package(Boost 1.54.0 COMPONENTS regex system thread filesystem date_time REQUIRED)
+# include_directories(SYSTEM ${Boost_INCLUDE_DIR})
 
 if(APPLE)
     set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl")

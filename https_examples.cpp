@@ -23,12 +23,66 @@ typedef SimpleWeb::Client<SimpleWeb::HTTPS> HttpsClient;
 void default_resource_send(const HttpsServer &server, shared_ptr<HttpsServer::Response> response,
                            shared_ptr<ifstream> ifs, shared_ptr<vector<char> > buffer);
 
+// MDM blast it out there and see what happens at https://www.ssllabs.com/ssltest/
+// We'll have to take down apache and run this as root, let's see what we get.
+const int cnPort = 443;
+const string cstr_server_url("bitpost.com:443");
+
+class Controller
+{
+public:
+    Controller(boost::asio::io_service& ios) : ios_(ios), timer_(ios) { start_timer(); }
+
+    void start_timer()
+    {
+        timer_.expires_from_now(boost::posix_time::milliseconds(50));
+        timer_.async_wait(boost::bind(&Controller::main_loop,this,boost::asio::placeholders::error));
+    }
+
+    void main_loop(const boost::system::error_code& error)
+    {
+        // WARNING: ALWAYS PROVIDE AND HANDLE THE ERROR PARAM in any timer callbacks.
+        // You can define a callback without it,
+        // but boost will CALL THE CALLBACK unexpectedly on you,
+        // with error set to a positive value, when timers are canceled.  Bad boost!
+        if (error)
+            return;
+
+        // Do client-y things, including handling any incoming data from https server.
+        cout << "Timer fired..." << std::endl;
+
+        // Prime the next loop.
+        timer_.expires_from_now(boost::posix_time::milliseconds(300));
+        timer_.async_wait(boost::bind(&Controller::main_loop,this,boost::asio::placeholders::error));
+    }
+
+    boost::asio::io_service& ios_;
+    boost::asio::deadline_timer timer_;
+};
+
+
 int main() {
     //HTTPS-server at port 8080 using 1 thread
     //Unless you do more heavy non-threaded processing in the resources,
     //1 thread is usually faster than several threads
-    HttpsServer server(8080, 1, "server.crt", "server.key");
-    
+
+    // -----------------------
+    // MDM external io_service
+    // HttpsServer server(8080, 1, "server.crt", "server.key");
+    boost::asio::io_service ios;
+    HttpsServer server(
+        ios,
+        cnPort,
+        1,
+
+        // MDM let's use the full chain, which i downloaded in chrome while visiting bitpost.com
+        // "/home/m/development/config/StartCom/bitpost.com/2016-/bitpost_5.pem",
+        "/home/m/development/config/StartCom/bitpost.com/2016-/bitpost_chain.crt",
+
+        "/home/m/development/config/StartCom/bitpost.com/2016-/bitpost_5.key"
+    );
+    // -----------------------
+
     //Add resources using path-regex and method-string, and an anonymous function
     //POST-example for the path /string, responds the posted string
     server.resource["^/string$"]["POST"]=[](shared_ptr<HttpsServer::Response> response, shared_ptr<HttpsServer::Request> request) {
@@ -142,12 +196,16 @@ int main() {
         server.start();
     });
     
+    // MDM external io_service
+    // The controller provides the main loop, using an additional ios timer.
+    Controller c(ios);
+
     //Wait for server to start so that the client can connect
     this_thread::sleep_for(chrono::seconds(1));
     
     //Client examples
     //Second Client() parameter set to false: no certificate verification
-    HttpsClient client("localhost:8080", false);
+    HttpsClient client(cstr_server_url, false);
     auto r1=client.request("GET", "/match/123");
     cout << r1->content.rdbuf() << endl;
 

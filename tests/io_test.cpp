@@ -9,7 +9,11 @@ typedef SimpleWeb::Server<SimpleWeb::HTTP> HttpServer;
 typedef SimpleWeb::Client<SimpleWeb::HTTP> HttpClient;
 
 int main() {
-    HttpServer server(8080, 1);
+
+    // MDM external io_service
+    // HttpServer server(8080, 1);
+    boost::asio::io_service ios;
+    HttpServer server(ios, 8080, 1);
     
     server.resource["^/string$"]["POST"]=[](shared_ptr<HttpServer::Response> response, shared_ptr<HttpServer::Request> request) {
         auto content=request->content.string();
