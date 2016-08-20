@@ -23,8 +23,10 @@ typedef SimpleWeb::Client<SimpleWeb::HTTPS> HttpsClient;
 void default_resource_send(const HttpsServer &server, shared_ptr<HttpsServer::Response> response,
                            shared_ptr<ifstream> ifs, shared_ptr<vector<char> > buffer);
 
+// MDM blast it out there and see what happens at https://www.ssllabs.com/ssltest/
+// We'll have to take down apache and run this as root, let's see what we get.
 const int cnPort = 443;
-const string cstr_server_url("localhost:443");
+const string cstr_server_url("bitpost.com:443");
 
 class Controller
 {
@@ -64,7 +66,16 @@ int main() {
     //1 thread is usually faster than several threads
 
     boost::asio::io_service ios;
-    HttpsServer server(ios, cnPort, 1,"server_chainbundle.crt","server.key");
+    HttpsServer server(
+        ios,
+        cnPort,
+        1,
+
+        // MDM let's use the full chain, which i downloaded in chrome while visiting bitpost.com
+        "/home/m/development/config/StartCom/bitpost.com/2016-/bitpost_chain.crt",
+        "/home/m/development/config/StartCom/bitpost.com/2016-/bitpost_5.key"
+    );
+    // -----------------------
 
     //Add resources using path-regex and method-string, and an anonymous function
     //POST-example for the path /string, responds the posted string
