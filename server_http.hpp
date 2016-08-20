@@ -189,8 +189,6 @@ namespace SimpleWeb {
 
     protected:
 
-        // MDM external io_service
-        // boost::asio::io_service io_service;
         boost::asio::io_service& io_service;
 
         boost::asio::ip::tcp::acceptor acceptor;
@@ -199,9 +197,6 @@ namespace SimpleWeb {
         long timeout_request;
         long timeout_content;
         
-        // MDM external io_service
-        // ServerBase(unsigned short port, size_t num_threads, long timeout_request, long timeout_send_or_receive) :
-        //      config(port, num_threads), acceptor(io_service),
         ServerBase(boost::asio::io_service& ios, unsigned short port, size_t num_threads, long timeout_request, long timeout_send_or_receive) :
                 config(port, num_threads), io_service(ios), acceptor(ios),
 
@@ -397,9 +392,6 @@ namespace SimpleWeb {
     class Server<HTTP> : public ServerBase<HTTP> {
     public:
 
-        // MDM external io_service
-        // Server(unsigned short port, size_t num_threads=1, long timeout_request=5, long timeout_content=300) :
-        //         ServerBase<HTTP>::ServerBase(port, num_threads, timeout_request, timeout_content) {}
         Server(boost::asio::io_service& ios, unsigned short port, size_t num_threads=1, long timeout_request=5, long timeout_content=300) :
                 ServerBase<HTTP>::ServerBase(ios, port, num_threads, timeout_request, timeout_content) {}
 

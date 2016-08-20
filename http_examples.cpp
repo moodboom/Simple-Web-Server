@@ -27,8 +27,6 @@ int main() {
     //HTTP-server at port 8080 using 1 thread
     //Unless you do more heavy non-threaded processing in the resources,
     //1 thread is usually faster than several threads
-    // MDM external io_service
-    // HttpServer server(8080, 1);
     boost::asio::io_service ios;
     HttpServer server(ios, 8080, 1);
 

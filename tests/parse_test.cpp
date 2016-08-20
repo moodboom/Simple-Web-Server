@@ -7,10 +7,6 @@ using namespace SimpleWeb;
 
 class ServerTest : public ServerBase<HTTP> {
 public:
-
-    // MDM external io_service
-    // ServerTest() :
-    //         ServerBase<HTTP>::ServerBase(8080, 1, 5, 300) {}
     ServerTest(boost::asio::io_service& ios) :
             ServerBase<HTTP>::ServerBase(ios, 8080, 1, 5, 300) {}
 
@@ -103,9 +99,6 @@ public:
 };
 
 int main() {
-
-    // MDM external io_service
-    // ServerTest serverTest;
     boost::asio::io_service ios;
     ServerTest serverTest(ios);
 
