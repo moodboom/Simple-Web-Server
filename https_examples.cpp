@@ -23,10 +23,8 @@ typedef SimpleWeb::Client<SimpleWeb::HTTPS> HttpsClient;
 void default_resource_send(const HttpsServer &server, shared_ptr<HttpsServer::Response> response,
                            shared_ptr<ifstream> ifs, shared_ptr<vector<char> > buffer);
 
-// MDM blast it out there and see what happens at https://www.ssllabs.com/ssltest/
-// We'll have to take down apache and run this as root, let's see what we get.
 const int cnPort = 443;
-const string cstr_server_url("bitpost.com:443");
+const string cstr_server_url("localhost:443");
 
 class Controller
 {
@@ -41,15 +39,14 @@ public:
 
     void main_loop(const boost::system::error_code& error)
     {
-        // WARNING: ALWAYS PROVIDE AND HANDLE THE ERROR PARAM in any timer callbacks.
-        // You can define a callback without it,
-        // but boost will CALL THE CALLBACK unexpectedly on you,
-        // with error set to a positive value, when timers are canceled.  Bad boost!
-        if (error)
-            return;
+        // MANDATORY, boost will make unsolicited calls with error set.
+        if (error) return;
 
-        // Do client-y things, including handling any incoming data from https server.
+
+        // Do any controller-like things, including handling timer events,
+        // handling any incoming data from https server, exiting, etc.
         cout << "Timer fired..." << std::endl;
+
 
         // Prime the next loop.
         timer_.expires_from_now(boost::posix_time::milliseconds(300));
@@ -66,22 +63,8 @@ int main() {
     //Unless you do more heavy non-threaded processing in the resources,
     //1 thread is usually faster than several threads
 
-    // -----------------------
-    // MDM external io_service
-    // HttpsServer server(8080, 1, "server.crt", "server.key");
     boost::asio::io_service ios;
-    HttpsServer server(
-        ios,
-        cnPort,
-        1,
-
-        // MDM let's use the full chain, which i downloaded in chrome while visiting bitpost.com
-        // "/home/m/development/config/StartCom/bitpost.com/2016-/bitpost_5.pem",
-        "/home/m/development/config/StartCom/bitpost.com/2016-/bitpost_chain.crt",
-
-        "/home/m/development/config/StartCom/bitpost.com/2016-/bitpost_5.key"
-    );
-    // -----------------------
+    HttpsServer server(ios, cnPort, 1,"server_chainbundle.crt","server.key");
 
     //Add resources using path-regex and method-string, and an anonymous function
     //POST-example for the path /string, responds the posted string
@@ -196,8 +179,7 @@ int main() {
         server.start();
     });
     
-    // MDM external io_service
-    // The controller provides the main loop, using an additional ios timer.
+    // The controller provides the main loop, including an additional ios timer.
     Controller c(ios);
 
     //Wait for server to start so that the client can connect

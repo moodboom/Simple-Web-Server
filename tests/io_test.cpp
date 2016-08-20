@@ -9,9 +9,6 @@ typedef SimpleWeb::Server<SimpleWeb::HTTP> HttpServer;
 typedef SimpleWeb::Client<SimpleWeb::HTTP> HttpClient;
 
 int main() {
-
-    // MDM external io_service
-    // HttpServer server(8080, 1);
     boost::asio::io_service ios;
     HttpServer server(ios, 8080, 1);
     
