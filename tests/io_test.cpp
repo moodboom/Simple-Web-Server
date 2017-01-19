@@ -9,7 +9,8 @@ typedef SimpleWeb::Server<SimpleWeb::HTTP> HttpServer;
 typedef SimpleWeb::Client<SimpleWeb::HTTP> HttpClient;
 
 int main() {
-    HttpServer server(8080, 1);
+    HttpServer server;
+    server.config.port=8080;
     
     server.resource["^/string$"]["POST"]=[](shared_ptr<HttpServer::Response> response, shared_ptr<HttpServer::Request> request) {
         auto content=request->content.string();
@@ -38,27 +39,56 @@ int main() {
     });
     
     this_thread::sleep_for(chrono::seconds(1));
-    HttpClient client("localhost:8080");
-
     {
-        stringstream output;
-        auto r=client.request("POST", "/string", "A string");
-        output << r->content.rdbuf();
-        assert(output.str()=="A string");
-    }
+        HttpClient client("localhost:8080");
     
-    {
-        stringstream output;
-        auto r=client.request("GET", "/info", "", {{"Test Parameter", "test value"}});
-        output << r->content.rdbuf();
-        assert(output.str()=="GET /info 1.1 test value");
+        {
+            stringstream output;
+            auto r=client.request("POST", "/string", "A string");
+            output << r->content.rdbuf();
+            assert(output.str()=="A string");
+        }
+        
+        {
+            stringstream output;
+            stringstream content("A string");
+            auto r=client.request("POST", "/string", content);
+            output << r->content.rdbuf();
+            assert(output.str()=="A string");
+        }
+        
+        {
+            stringstream output;
+            auto r=client.request("GET", "/info", "", {{"Test Parameter", "test value"}});
+            output << r->content.rdbuf();
+            assert(output.str()=="GET /info 1.1 test value");
+        }
+        
+        {
+            stringstream output;
+            auto r=client.request("GET", "/match/123");
+            output << r->content.rdbuf();
+            assert(output.str()=="123");
+        }
     }
-    
     {
-        stringstream output;
-        auto r=client.request("GET", "/match/123");
-        output << r->content.rdbuf();
-        assert(output.str()=="123");
+        HttpClient client("localhost:8080");
+        
+        // test performing the stream version of the request methods first
+        {
+            stringstream output;
+            stringstream content("A string");
+            auto r=client.request("POST", "/string", content);
+            output << r->content.rdbuf();
+            assert(output.str()=="A string");
+        }
+        
+        {
+            stringstream output;
+            auto r=client.request("POST", "/string", "A string");
+            output << r->content.rdbuf();
+            assert(output.str()=="A string");
+        }
     }
     
     server.stop();
