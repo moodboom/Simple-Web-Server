@@ -354,16 +354,17 @@ namespace SimpleWeb {
                     return;
                 }
             }
+            
+            // MDM Forms that contain no fields are submitted (at least by chrome)
+            // with an ignorant useless-as-an-appendix trailing question mark.
+            // Check and remove, with the fun little pop_back() C++11 call.
+            if (request->path.size() && request->path[request->path.length()-1] == '?')
+              request->path.pop_back();
+        
             //Find path- and method-match, and call write_response
             for(auto &regex_method: resource) {
                 auto it=regex_method.second.find(request->method);
                 if(it!=regex_method.second.end()) {
-                
-                    // MDM Forms that contain no fields are submitted (at least by chrome)
-                    // with an ignorant useless-as-an-appendix trailing question mark.
-                    // Check and remove, with the fun little pop_back() C++11 call.
-                    if (request->path.size() && request->path[request->path.length()-1] == '?')
-                      request->path.pop_back();
                 
                     REGEX_NS::smatch sm_res;
                     if(REGEX_NS::regex_match(request->path, sm_res, regex_method.first)) {
