@@ -226,6 +226,9 @@ namespace SimpleWeb {
         
         ServerBase(unsigned short port) : config(port) {}
         
+        // MDM semver helper for use in derived classes
+        virtual bool old_url_semver(const std::shared_ptr<Request> &request) { return false; }
+        
         virtual void accept()=0;
         
         std::shared_ptr<boost::asio::deadline_timer> get_timeout_timer(const std::shared_ptr<socket_type> &socket, long seconds) {
@@ -360,6 +363,17 @@ namespace SimpleWeb {
             // Check and remove, with the fun little pop_back() C++11 call.
             if (request->path.size() && request->path[request->path.length()-1] == '?')
               request->path.pop_back();
+        
+            // MDM Check the semantic version in the url.
+            // If it is old, redirect to the correct url NOW.
+            // NOTE that this is necessary for aggressive caching of RESTful API resources.
+            // See derived classes for details.
+            if (old_url_semver(request))
+            {
+              // It is expected that the derived class will do all the work for a redirect,
+              // so that here we can simply return.
+              return;
+            }
         
             //Find path- and method-match, and call write_response
             for(auto &regex_method: resource) {
