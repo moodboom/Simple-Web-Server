@@ -227,7 +227,7 @@ namespace SimpleWeb {
         ServerBase(unsigned short port) : config(port) {}
         
         // MDM semver helper for use in derived classes
-        virtual bool old_url_semver(const std::shared_ptr<Request> &request) { return false; }
+        virtual void url_upgrade_any_old_semver(string& url) {}
         
         virtual void accept()=0;
         
@@ -365,15 +365,10 @@ namespace SimpleWeb {
               request->path.pop_back();
         
             // MDM Check the semantic version in the url.
-            // If it is old, redirect to the correct url NOW.
+            // If it is old, simply update it and give the newer url a try.
             // NOTE that this is necessary for aggressive caching of RESTful API resources.
             // See derived classes for details.
-            if (old_url_semver(request))
-            {
-              // It is expected that the derived class will do all the work for a redirect,
-              // so that here we can simply return.
-              return;
-            }
+            url_upgrade_any_old_semver(request->path);
         
             //Find path- and method-match, and call write_response
             for(auto &regex_method: resource) {
