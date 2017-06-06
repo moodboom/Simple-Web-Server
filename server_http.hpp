@@ -12,6 +12,20 @@
 #include <iostream>
 #include <sstream>
 
+
+// ------------------------------------------------------------------------------
+// CONSTANTS GLOBALS STATICS
+// ------------------------------------------------------------------------------
+const string cstr_HTML_HEADER1 = "HTTP/1.1 200 OK\r\nContent-Length: ";
+const string cstr_HTML_HEADER2 = "\r\n\r\n";
+const string cstr_HTML_302_HEADER1 = "HTTP/1.1 302 Moved Temporarily\r\nLocation: ";     // for auth redirects
+const string cstr_HTML_MIMETYPE = "\r\nContent-Type: text/html";
+const string cstr_JSON_MIMETYPE = "\r\nContent-Type: application/json";
+const string cstr_HTML_FULLHEADER2 = cstr_HTML_MIMETYPE + cstr_HTML_HEADER2;
+const string cstr_JSON_FULLHEADER2 = cstr_JSON_MIMETYPE + cstr_HTML_HEADER2;
+// ------------------------------------------------------------------------------
+
+
 #ifndef CASE_INSENSITIVE_EQUALS_AND_HASH
 #define CASE_INSENSITIVE_EQUALS_AND_HASH
 //Based on http://www.boost.org/doc/libs/1_60_0/doc/html/unordered/hash_equality.html
@@ -227,7 +241,7 @@ namespace SimpleWeb {
         ServerBase(unsigned short port) : config(port) {}
         
         // MDM semver helper for use in derived classes
-        virtual void url_upgrade_any_old_semver(string& url) {}
+        virtual bool url_upgrade_any_old_semver(string& url) {}
         
         virtual void accept()=0;
         
@@ -365,10 +379,39 @@ namespace SimpleWeb {
               request->path.pop_back();
         
             // MDM Check the semantic version in the url.
-            // If it is old, simply update it and give the newer url a try.
+            // If it is old:
+            //    for http get requests,
+            //      redirect to the proper url so subsequent relative-path requests work too
+            //    otherwise, simply update it and give the newer url a try
             // NOTE that this is necessary for aggressive caching of RESTful API resources.
             // See derived classes for details.
-            url_upgrade_any_old_semver(request->path);
+            if (url_upgrade_any_old_semver(request->path))
+            {
+              if (request->method == "GET")
+              {
+                // Redirect now.
+                // NOTE that [auto redirect_handler = ...] DOES NOT WORK (arrgg) (using gcc c++11 ~2017/06/06), 
+                // nor does specifying the lambda as an inline param of write_response (it requires a lambda reference, ugg).
+                std::function<
+                  void(
+                    std::shared_ptr<typename ServerBase<socket_type>::Response>, 
+                    std::shared_ptr<typename ServerBase<socket_type>::Request>
+                  )
+                > redirect_handler = 
+                [this](
+                  std::shared_ptr<typename ServerBase<socket_type>::Response> response,
+                  std::shared_ptr<typename ServerBase<socket_type>::Request> request
+                ) {
+                  *response << cstr_HTML_302_HEADER1 << request->path << cstr_HTML_HEADER2;
+                };
+                write_response(
+                  socket, 
+                  request, 
+                  redirect_handler
+                );
+                return;
+              }
+            }
         
             //Find path- and method-match, and call write_response
             for(auto &regex_method: resource) {
