@@ -188,6 +188,35 @@ namespace SimpleWeb {
       return response;
     }
 
+    // customization for moodboom/quick-http
+    std::shared_ptr<Response> request_without_exception(
+      const std::string& request_type,
+      const std::string& path="/",
+      string_view content="",
+      const CaseInsensitiveMultimap& header = CaseInsensitiveMultimap()
+    ) {
+      try {
+          return request(
+              request_type,     // verb
+              path,             // path
+              content,          // content
+              header            // header
+          );
+      } catch(const std::exception& e) {
+
+          // SWS throws exceptions, which is not helpful.
+          // A bad call is a bad call and needs immediate handling.
+          // I don't want to stand up a try catch block for every single call.
+
+          // TODO SWS makes status_ccode private so we can't set it here.
+          // Determine a good internal way to return bad status due to exception.
+          // std::shared_ptr<Response> response(new Response);
+          // response->status_code = "503 Not Availalbe -- HttpsClient exception caught";
+
+          return std::shared_ptr<Response>();
+      }
+    }
+
     /// Convenience function to perform synchronous request. The io_service is run within this function.
     /// If reusing the io_service for other tasks, use the asynchronous request functions instead.
     /// Do not use concurrently with the asynchronous request functions.

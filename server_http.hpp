@@ -11,6 +11,21 @@
 #include <thread>
 #include <unordered_set>
 
+
+// customization for moodboom/quick-http
+// ------------------------------------------------------------------------------
+// CONSTANTS GLOBALS STATICS
+// ------------------------------------------------------------------------------
+const string cstr_HTML_HEADER1 = "HTTP/1.1 200 OK\r\nContent-Length: ";
+const string cstr_HTML_HEADER2 = "\r\n\r\n";
+const string cstr_HTML_302_HEADER1 = "HTTP/1.1 302 Moved Temporarily\r\nLocation: ";     // for auth redirects
+const string cstr_HTML_MIMETYPE = "\r\nContent-Type: text/html";
+const string cstr_JSON_MIMETYPE = "\r\nContent-Type: application/json";
+const string cstr_HTML_FULLHEADER2 = cstr_HTML_MIMETYPE + cstr_HTML_HEADER2;
+const string cstr_JSON_FULLHEADER2 = cstr_JSON_MIMETYPE + cstr_HTML_HEADER2;
+// ------------------------------------------------------------------------------
+
+
 #ifdef USE_STANDALONE_ASIO
 #include <asio.hpp>
 #include <asio/steady_timer.hpp>
@@ -411,6 +426,9 @@ namespace SimpleWeb {
 
     ServerBase(unsigned short port) noexcept : config(port), connections(new std::unordered_set<Connection *>()), connections_mutex(new std::mutex()), handler_runner(new ScopeRunner()) {}
 
+    // customization for moodboom/quick-http
+    virtual bool url_upgrade_any_old_semver(string& url) { return false; }
+
     virtual void accept() = 0;
 
     template <typename... Args>
@@ -622,6 +640,51 @@ namespace SimpleWeb {
           return;
         }
       }
+
+      // -------------------------------------
+      // customization for moodboom/quick-http
+      // -------------------------------------
+      // Forms that contain no fields are sometimes submitted (at least by chrome)
+      // with a useless trailing question mark.  Check and remove.
+      string& path = session->request->path;
+      if (path.size() && path[path.length()-1] == '?')
+        path.pop_back();
+
+      // Check the semantic version in the url.
+      // If it is old:
+      //    for http get requests,
+      //      redirect to the proper url so subsequent relative-path requests work too
+      //    otherwise, simply update it and give the newer url a try
+      // NOTE that this is necessary for aggressive caching of RESTful API resources.
+      // See derived classes for details.
+      if (url_upgrade_any_old_semver(path))
+      {
+        if (session->request->method == "GET")
+        {
+          // Redirect now.
+          // NOTE that [auto redirect_handler = ...] DOES NOT WORK (arrgg) (using gcc c++11 ~2017/06/06),
+          // nor does specifying the lambda as an inline param of write_response (it requires a lambda reference, ugg).
+          std::function<
+            void(
+              std::shared_ptr<typename ServerBase<socket_type>::Response>,
+              std::shared_ptr<typename ServerBase<socket_type>::Request>
+            )
+          > redirect_handler =
+            [this](
+              std::shared_ptr<typename ServerBase<socket_type>::Response> response,
+              std::shared_ptr<typename ServerBase<socket_type>::Request> request
+            ) {
+              *response << cstr_HTML_302_HEADER1 << request->path << cstr_HTML_HEADER2;
+            };
+          write(
+            session,
+            redirect_handler
+          );
+          return;
+        }
+      }
+      // -------------------------------------
+
       // Find path- and method-match, and call write
       for(auto &regex_method : resource) {
         auto it = regex_method.second.find(session->request->method);
