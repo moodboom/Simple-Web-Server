@@ -641,13 +641,15 @@ namespace SimpleWeb {
         }
       }
 
+      // -------------------------------------
       // customization for moodboom/quick-http
+      // -------------------------------------
       // Forms that contain no fields are sometimes submitted (at least by chrome)
       // with a useless trailing question mark.  Check and remove.
-      if (request->path.size() && request->path[request->path.length()-1] == '?')
-        request->path.pop_back();
+      string& path = session->request->path;
+      if (path.size() && path[path.length()-1] == '?')
+        path.pop_back();
 
-      // customization for moodboom/quick-http
       // Check the semantic version in the url.
       // If it is old:
       //    for http get requests,
@@ -655,9 +657,9 @@ namespace SimpleWeb {
       //    otherwise, simply update it and give the newer url a try
       // NOTE that this is necessary for aggressive caching of RESTful API resources.
       // See derived classes for details.
-      if (url_upgrade_any_old_semver(request->path))
+      if (url_upgrade_any_old_semver(path))
       {
-        if (request->method == "GET")
+        if (session->request->method == "GET")
         {
           // Redirect now.
           // NOTE that [auto redirect_handler = ...] DOES NOT WORK (arrgg) (using gcc c++11 ~2017/06/06),
@@ -674,22 +676,14 @@ namespace SimpleWeb {
             ) {
               *response << cstr_HTML_302_HEADER1 << request->path << cstr_HTML_HEADER2;
             };
-          // TODO updated, needs vetting
-          /*
-          write_response(
-            socket,
-            request,
-            redirect_handler
-          );
-          */
           write(
             session,
-            // needed? request,
             redirect_handler
           );
           return;
         }
       }
+      // -------------------------------------
 
       // Find path- and method-match, and call write
       for(auto &regex_method : resource) {
